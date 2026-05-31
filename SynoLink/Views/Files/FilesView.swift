@@ -9,6 +9,8 @@ struct FilesView: View {
     @State private var sortBy: SortOption = .name
     @State private var sortAsc = true
 
+    @State private var errorMessage: String?
+
     enum SortOption: String, CaseIterable { case name = "名称", size = "大小", time = "时间" }
 
     private let dsm = DsmClient.shared
@@ -52,17 +54,31 @@ struct FilesView: View {
     }
 
     private var shareList: some View {
-        List {
-            if shares.isEmpty && loading {
-                ProgressView().frame(maxWidth: .infinity)
+        Group {
+            if let errorMessage {
+                ContentUnavailableView {
+                    Label("加载失败", systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text(errorMessage)
+                } actions: {
+                    Button("重试") { Task { await loadShares() } }
+                }
+            } else if shares.isEmpty && !loading {
+                ContentUnavailableView("暂无共享文件夹", systemImage: "folder")
             } else {
-                ForEach(shares) { share in
-                    Button { navigate(to: share.path) } label: {
-                        HStack {
-                            Image(systemName: "folder.fill").foregroundStyle(.blue)
-                            Text(share.name)
-                            Spacer()
-                            Image(systemName: "chevron.right").foregroundStyle(.secondary)
+                List {
+                    if shares.isEmpty && loading {
+                        ProgressView().frame(maxWidth: .infinity)
+                    } else {
+                        ForEach(shares) { share in
+                            Button { navigate(to: share.path) } label: {
+                                HStack {
+                                    Image(systemName: "folder.fill").foregroundStyle(.blue)
+                                    Text(share.name)
+                                    Spacer()
+                                    Image(systemName: "chevron.right").foregroundStyle(.secondary)
+                                }
+                            }
                         }
                     }
                 }
@@ -71,34 +87,48 @@ struct FilesView: View {
     }
 
     private var fileList: some View {
-        List {
-            if files.isEmpty && loading {
-                ProgressView().frame(maxWidth: .infinity)
+        Group {
+            if let errorMessage {
+                ContentUnavailableView {
+                    Label("加载失败", systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text(errorMessage)
+                } actions: {
+                    Button("重试") { Task { if let path = currentPath { await loadFiles(path: path) } } }
+                }
+            } else if files.isEmpty && !loading {
+                ContentUnavailableView("文件夹为空", systemImage: "folder.badge.questionmark")
             } else {
-                ForEach(files) { file in
-                    Button {
-                        if file.isDir { navigate(to: file.path) }
-                    } label: {
-                        HStack {
-                            Image(systemName: file.isDir ? "folder.fill" : iconForFile(file.name))
-                                .foregroundStyle(file.isDir ? .blue : .secondary)
-                                .frame(width: 24)
-                            VStack(alignment: .leading) {
-                                Text(file.name).lineLimit(1)
-                                if let size = file.additional?.size, !file.isDir {
-                                    Text(Format.bytes(size)).font(.caption).foregroundStyle(.secondary)
+                List {
+                    if files.isEmpty && loading {
+                        ProgressView().frame(maxWidth: .infinity)
+                    } else {
+                        ForEach(files) { file in
+                            Button {
+                                if file.isDir { navigate(to: file.path) }
+                            } label: {
+                                HStack {
+                                    Image(systemName: file.isDir ? "folder.fill" : iconForFile(file.name))
+                                        .foregroundStyle(file.isDir ? .blue : .secondary)
+                                        .frame(width: 24)
+                                    VStack(alignment: .leading) {
+                                        Text(file.name).lineLimit(1)
+                                        if let size = file.additional?.size, !file.isDir {
+                                            Text(Format.bytes(size)).font(.caption).foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    Spacer()
+                                    if file.isDir {
+                                        Image(systemName: "chevron.right").foregroundStyle(.secondary)
+                                    }
                                 }
                             }
-                            Spacer()
-                            if file.isDir {
-                                Image(systemName: "chevron.right").foregroundStyle(.secondary)
+                            .contextMenu {
+                                Button("重命名") { /* TODO */ }
+                                Button("删除", role: .destructive) {
+                                    Task { try? await dsm.deletePath(file.path); await refresh() }
+                                }
                             }
-                        }
-                    }
-                    .contextMenu {
-                        Button("重命名") { /* TODO */ }
-                        Button("删除", role: .destructive) {
-                            Task { try? await dsm.deletePath(file.path); await refresh() }
                         }
                     }
                 }
@@ -123,8 +153,16 @@ struct FilesView: View {
         defer { loading = false }
         do {
             let res = try await dsm.listShare(additional: "[\"real_path\",\"owner\",\"time\"]")
-            if res.success, let data = res.data { shares = data.shares ?? [] }
-        } catch {}
+            if res.success, let data = res.data {
+                shares = data.shares ?? []
+                errorMessage = nil
+            } else {
+                let code = res.error?.code ?? -1
+                errorMessage = "加载共享列表失败 (code=\(code))"
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func loadFiles(path: String) async {
@@ -132,9 +170,17 @@ struct FilesView: View {
         defer { loading = false }
         do {
             let res = try await dsm.listFiles(folderPath: path, additional: "[\"size\",\"time\",\"type\"]")
-            if res.success, let data = res.data { files = data.files ?? [] }
+            if res.success, let data = res.data {
+                files = data.files ?? []
+                errorMessage = nil
+            } else {
+                let code = res.error?.code ?? -1
+                errorMessage = "加载文件列表失败 (code=\(code))"
+            }
             sortFiles()
-        } catch {}
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func navigate(to path: String) {

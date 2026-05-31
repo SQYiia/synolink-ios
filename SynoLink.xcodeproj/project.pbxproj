@@ -31,6 +31,7 @@
 		C0076C5AAFF2D0F970C536C9 /* DsmModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 726CA1332089EADCC4315ED3 /* DsmModels.swift */; };
 		C396DF11D80FEBC1F6C9E202 /* AddServerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92CD536BEB4A57E4B3D2C5A /* AddServerView.swift */; };
 		C616D48E3EBD27C751C18B14 /* DownloadStationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CBB7E9FA589F0D587583DC2 /* DownloadStationStore.swift */; };
+		CAEB7305810A4D92F23DF1CE /* FolderPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DBEB5756753388E7A0284B7 /* FolderPickerView.swift */; };
 		D862A97B4A24E09485232351 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B14E057091A3605AE54850A /* SettingsView.swift */; };
 		E24C2543D053D3F67F9722E1 /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64FE10DED04D4BD8C33EE070 /* AppStore.swift */; };
 		EB15DCAFE4E2244CEAF6BE92 /* VmmStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2BABDBF8D35FE288BBB089B /* VmmStore.swift */; };
@@ -47,6 +48,7 @@
 		1958C1D98CF3303C99263E15 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		1B14E057091A3605AE54850A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		1DA7AA63A3032F906F100973 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		1DBEB5756753388E7A0284B7 /* FolderPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderPickerView.swift; sourceTree = "<group>"; };
 		389FD00C4DC102E12EEA817A /* DsmApi+VMM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DsmApi+VMM.swift"; sourceTree = "<group>"; };
 		3C6DA698BE93CCD27E9FC568 /* SynoLinkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynoLinkApp.swift; sourceTree = "<group>"; };
 		4CBB7E9FA589F0D587583DC2 /* DownloadStationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadStationStore.swift; sourceTree = "<group>"; };
@@ -225,6 +227,7 @@
 			isa = PBXGroup;
 			children = (
 				850A87AC1C70987A959B32FB /* AlbumView.swift */,
+				1DBEB5756753388E7A0284B7 /* FolderPickerView.swift */,
 			);
 			path = Album;
 			sourceTree = "<group>";
@@ -348,6 +351,7 @@
 				C0076C5AAFF2D0F970C536C9 /* DsmModels.swift in Sources */,
 				84E7EC5188313EF9E0024D64 /* Extensions.swift in Sources */,
 				96BACCB2A3ADF65D3FCE51E0 /* FilesView.swift in Sources */,
+				CAEB7305810A4D92F23DF1CE /* FolderPickerView.swift in Sources */,
 				268A405C31B528033CBA56AB /* Format.swift in Sources */,
 				7ABB81E6D08B7E9B4F819E5F /* LoginView.swift in Sources */,
 				ECE4AF32CFE61A67D0EBA122 /* MainTabView.swift in Sources */,

@@ -4,6 +4,8 @@ struct AlbumView: View {
     @State private var photos: [DsmFile] = []
     @State private var loading = false
     @State private var selectedPhoto: DsmFile?
+    @State private var showFolderPicker = false
+    @AppStorage("album.scanFolder") private var scanFolder = "/"
 
     private let dsm = DsmClient.shared
     private let columns = [GridItem(.adaptive(minimum: 100), spacing: 2)]
@@ -26,9 +28,20 @@ struct AlbumView: View {
                     }
                 }
             }
-            .navigationTitle("相册")
+            .navigationTitle(scanFolder == "/" ? "相册" : (scanFolder as NSString).lastPathComponent)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showFolderPicker = true } label: {
+                        Image(systemName: "folder")
+                    }
+                }
+            }
             .refreshable { await scanPhotos() }
             .task { await scanPhotos() }
+            .onChange(of: scanFolder) { _, _ in Task { await scanPhotos() } }
+            .sheet(isPresented: $showFolderPicker) {
+                FolderPickerView(currentFolder: $scanFolder)
+            }
             .sheet(item: $selectedPhoto) { photo in
                 PhotoDetailView(photo: photo)
             }
@@ -39,7 +52,7 @@ struct AlbumView: View {
         loading = true
         defer { loading = false }
         do {
-            let res = try await dsm.searchStart(folderPath: "/", extension: "jpg,jpeg,png,heic,gif,webp", filetype: "file")
+            let res = try await dsm.searchStart(folderPath: scanFolder, extension: "jpg,jpeg,png,heic,gif,webp", filetype: "file")
             guard res.success, let taskid = res.data?.taskid else { return }
             var all: [DsmFile] = []
             var offset = 0
