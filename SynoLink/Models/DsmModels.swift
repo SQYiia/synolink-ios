@@ -16,9 +16,13 @@ struct AnyCodable: Codable {
     init(_ value: Any) { self.value = value }
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        if let v = try? container.decode(String.self) { value = v }
+        if container.decodeNil() { value = NSNull() }
+        else if let v = try? container.decode(String.self) { value = v }
         else if let v = try? container.decode(Int.self) { value = v }
         else if let v = try? container.decode(Bool.self) { value = v }
+        else if let v = try? container.decode(Double.self) { value = v }
+        else if let v = try? container.decode([String: AnyCodable].self) { value = v.mapValues { $0.value } }
+        else if let v = try? container.decode([AnyCodable].self) { value = v.map { $0.value } }
         else { value = NSNull() }
     }
     func encode(to encoder: Encoder) throws {
@@ -27,6 +31,7 @@ struct AnyCodable: Codable {
         case let s as String: try container.encode(s)
         case let i as Int: try container.encode(i)
         case let b as Bool: try container.encode(b)
+        case let d as Double: try container.encode(d)
         default: try container.encodeNil()
         }
     }

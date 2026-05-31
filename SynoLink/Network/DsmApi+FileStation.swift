@@ -6,6 +6,11 @@ struct DsmShare: Codable, Identifiable {
     let name: String
     let isDir: Bool?
     let additional: ShareAdditional?
+
+    enum CodingKeys: String, CodingKey {
+        case path, name, additional
+        case isDir = "isdir"
+    }
 }
 
 struct ShareAdditional: Codable {
@@ -26,6 +31,11 @@ struct DsmFile: Codable, Identifiable {
     let name: String
     let isDir: Bool
     let additional: FileAdditional?
+
+    enum CodingKeys: String, CodingKey {
+        case path, name, additional
+        case isDir = "isdir"
+    }
 }
 
 struct FileAdditional: Codable {

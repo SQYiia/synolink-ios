@@ -1,59 +1,27 @@
 import SwiftUI
 
 struct FilesView: View {
-    @State private var currentPath: String? = nil
+    @State private var navPath = NavigationPath()
     @State private var shares: [DsmShare] = []
-    @State private var files: [DsmFile] = []
     @State private var loading = false
-    @State private var pathStack: [String] = []
-    @State private var sortBy: SortOption = .name
-    @State private var sortAsc = true
-
     @State private var errorMessage: String?
-
-    enum SortOption: String, CaseIterable { case name = "名称", size = "大小", time = "时间" }
 
     private let dsm = DsmClient.shared
 
+    enum SortOption: String, CaseIterable { case name = "名称", size = "大小", time = "时间" }
+
     var body: some View {
-        NavigationStack {
-            Group {
-                if let path = currentPath {
-                    fileList
-                        .navigationTitle(path.components(separatedBy: "/").last ?? path)
-                } else {
-                    shareList
-                        .navigationTitle("文件")
+        NavigationStack(path: $navPath) {
+            shareListView
+                .navigationTitle("文件")
+                .navigationDestination(for: String.self) { path in
+                    FolderContentsView(path: path)
                 }
-            }
-            .toolbar {
-                if currentPath != nil {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button { goUp() } label: { Image(systemName: "chevron.left") }
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Menu {
-                            ForEach(SortOption.allCases, id: \.self) { opt in
-                                Button {
-                                    sortBy = opt
-                                    sortFiles()
-                                } label: {
-                                    HStack {
-                                        Text(opt.rawValue)
-                                        if sortBy == opt { Image(systemName: sortAsc ? "arrow.up" : "arrow.down") }
-                                    }
-                                }
-                            }
-                        } label: { Image(systemName: "arrow.up.arrow.down") }
-                    }
-                }
-            }
-            .refreshable { await refresh() }
-            .task { await loadShares() }
+                .task { await loadShares() }
         }
     }
 
-    private var shareList: some View {
+    private var shareListView: some View {
         Group {
             if let errorMessage {
                 ContentUnavailableView {
@@ -71,12 +39,11 @@ struct FilesView: View {
                         ProgressView().frame(maxWidth: .infinity)
                     } else {
                         ForEach(shares) { share in
-                            Button { navigate(to: share.path) } label: {
+                            NavigationLink(value: share.path) {
                                 HStack {
                                     Image(systemName: "folder.fill").foregroundStyle(.blue)
                                     Text(share.name)
                                     Spacer()
-                                    Image(systemName: "chevron.right").foregroundStyle(.secondary)
                                 }
                             }
                         }
@@ -84,68 +51,7 @@ struct FilesView: View {
                 }
             }
         }
-    }
-
-    private var fileList: some View {
-        Group {
-            if let errorMessage {
-                ContentUnavailableView {
-                    Label("加载失败", systemImage: "exclamationmark.triangle")
-                } description: {
-                    Text(errorMessage)
-                } actions: {
-                    Button("重试") { Task { if let path = currentPath { await loadFiles(path: path) } } }
-                }
-            } else if files.isEmpty && !loading {
-                ContentUnavailableView("文件夹为空", systemImage: "folder.badge.questionmark")
-            } else {
-                List {
-                    if files.isEmpty && loading {
-                        ProgressView().frame(maxWidth: .infinity)
-                    } else {
-                        ForEach(files) { file in
-                            Button {
-                                if file.isDir { navigate(to: file.path) }
-                            } label: {
-                                HStack {
-                                    Image(systemName: file.isDir ? "folder.fill" : iconForFile(file.name))
-                                        .foregroundStyle(file.isDir ? .blue : .secondary)
-                                        .frame(width: 24)
-                                    VStack(alignment: .leading) {
-                                        Text(file.name).lineLimit(1)
-                                        if let size = file.additional?.size, !file.isDir {
-                                            Text(Format.bytes(size)).font(.caption).foregroundStyle(.secondary)
-                                        }
-                                    }
-                                    Spacer()
-                                    if file.isDir {
-                                        Image(systemName: "chevron.right").foregroundStyle(.secondary)
-                                    }
-                                }
-                            }
-                            .contextMenu {
-                                Button("重命名") { /* TODO */ }
-                                Button("删除", role: .destructive) {
-                                    Task { try? await dsm.deletePath(file.path); await refresh() }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private func iconForFile(_ name: String) -> String {
-        let ext = (name as NSString).pathExtension.lowercased()
-        switch ext {
-        case "jpg", "jpeg", "png", "gif", "heic", "webp": return "photo"
-        case "mp4", "mov", "avi", "mkv": return "video"
-        case "mp3", "flac", "wav", "aac": return "music.note"
-        case "pdf": return "doc.richtext"
-        case "zip", "rar", "7z", "tar", "gz": return "archivebox"
-        default: return "doc"
-        }
+        .refreshable { await loadShares() }
     }
 
     private func loadShares() async {
@@ -164,8 +70,107 @@ struct FilesView: View {
             errorMessage = error.localizedDescription
         }
     }
+}
 
-    private func loadFiles(path: String) async {
+struct FolderContentsView: View {
+    let path: String
+    @State private var files: [DsmFile] = []
+    @State private var loading = false
+    @State private var errorMessage: String?
+    @State private var sortBy: FilesView.SortOption = .name
+    @State private var sortAsc = true
+
+    private let dsm = DsmClient.shared
+
+    var body: some View {
+        Group {
+            if let errorMessage {
+                ContentUnavailableView {
+                    Label("加载失败", systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text(errorMessage)
+                } actions: {
+                    Button("重试") { Task { await loadFiles() } }
+                }
+            } else if files.isEmpty && !loading {
+                ContentUnavailableView("文件夹为空", systemImage: "folder.badge.questionmark")
+            } else {
+                List {
+                    if files.isEmpty && loading {
+                        ProgressView().frame(maxWidth: .infinity)
+                    } else {
+                        ForEach(files) { file in
+                            if file.isDir {
+                                NavigationLink(value: file.path) {
+                                    fileRow(file)
+                                }
+                            } else {
+                                fileRow(file)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle(path.components(separatedBy: "/").last ?? path)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    ForEach(FilesView.SortOption.allCases, id: \.self) { opt in
+                        Button {
+                            sortBy = opt
+                            sortFiles()
+                        } label: {
+                            HStack {
+                                Text(opt.rawValue)
+                                if sortBy == opt { Image(systemName: sortAsc ? "arrow.up" : "arrow.down") }
+                            }
+                        }
+                    }
+                } label: { Image(systemName: "arrow.up.arrow.down") }
+            }
+        }
+        .refreshable { await loadFiles() }
+        .task { await loadFiles() }
+    }
+
+    private func fileRow(_ file: DsmFile) -> some View {
+        HStack {
+            Image(systemName: file.isDir ? "folder.fill" : iconForFile(file.name))
+                .foregroundStyle(file.isDir ? .blue : .secondary)
+                .frame(width: 24)
+            VStack(alignment: .leading) {
+                Text(file.name).lineLimit(1)
+                if let size = file.additional?.size, !file.isDir {
+                    Text(Format.bytes(size)).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            if file.isDir {
+                Image(systemName: "chevron.right").foregroundStyle(.secondary)
+            }
+        }
+        .contextMenu {
+            Button("重命名") { }
+            Button("删除", role: .destructive) {
+                Task { try? await dsm.deletePath(file.path); await loadFiles() }
+            }
+        }
+    }
+
+    private func iconForFile(_ name: String) -> String {
+        let ext = (name as NSString).pathExtension.lowercased()
+        switch ext {
+        case "jpg", "jpeg", "png", "gif", "heic", "webp": return "photo"
+        case "mp4", "mov", "avi", "mkv": return "video"
+        case "mp3", "flac", "wav", "aac": return "music.note"
+        case "pdf": return "doc.richtext"
+        case "zip", "rar", "7z", "tar", "gz": return "archivebox"
+        default: return "doc"
+        }
+    }
+
+    private func loadFiles() async {
         loading = true
         defer { loading = false }
         do {
@@ -181,27 +186,6 @@ struct FilesView: View {
         } catch {
             errorMessage = error.localizedDescription
         }
-    }
-
-    private func navigate(to path: String) {
-        if currentPath != nil { pathStack.append(currentPath!) }
-        currentPath = path
-        Task { await loadFiles(path: path) }
-    }
-
-    private func goUp() {
-        if let prev = pathStack.popLast() {
-            currentPath = prev
-            Task { await loadFiles(path: prev) }
-        } else {
-            currentPath = nil
-            files = []
-        }
-    }
-
-    private func refresh() async {
-        if let path = currentPath { await loadFiles(path: path) }
-        else { await loadShares() }
     }
 
     private func sortFiles() {

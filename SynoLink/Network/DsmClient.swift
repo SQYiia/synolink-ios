@@ -83,7 +83,10 @@ actor DsmClient {
             decoder.dateDecodingStrategy = .secondsSince1970
             parsed = try decoder.decode(DsmResponse<T>.self, from: data)
         } catch {
-            throw DsmError.decodeFailed(error)
+            let snippet = String(data: data.prefix(300), encoding: .utf8) ?? "(非 UTF-8)"
+            throw DsmError.decodeFailed(NSError(domain: "DsmClient", code: -1, userInfo: [
+                NSLocalizedDescriptionKey: "\(error.localizedDescription)\n响应片段: \(snippet)"
+            ]))
         }
 
         if !parsed.success, let code = parsed.error?.code, !retried {

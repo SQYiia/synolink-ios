@@ -26,6 +26,7 @@ struct DashboardView: View {
     @State private var isEditing = false
     @State private var showSystemMonitor = false
     @State private var showVmm = false
+    @State private var showVideo = false
     @AppStorage("dashboard.hiddenTiles") private var hiddenTilesData: String = "[]"
 
     private static let allTiles: [DashboardTile] = [
@@ -76,6 +77,9 @@ struct DashboardView: View {
             .sheet(isPresented: $showVmm) {
                 NavigationStack { VmmView() }
             }
+            .sheet(isPresented: $showVideo) {
+                VideosView()
+            }
         }
     }
 
@@ -83,6 +87,7 @@ struct DashboardView: View {
         switch tile.id {
         case "files": selectedTab = 1
         case "album": selectedTab = 2
+        case "video": showVideo = true
         case "downloads": selectedTab = 3
         case "performance": showSystemMonitor = true
         case "vmm": showVmm = true
