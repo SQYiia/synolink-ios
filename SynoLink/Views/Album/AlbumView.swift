@@ -5,6 +5,7 @@ struct AlbumView: View {
     @State private var loading = false
     @State private var selectedPhoto: DsmFile?
     @State private var showFolderPicker = false
+    @State private var errorMessage: String?
     @AppStorage("album.scanFolder") private var scanFolder = "/"
 
     private let dsm = DsmClient.shared
@@ -12,16 +13,37 @@ struct AlbumView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: 2) {
-                    ForEach(photos) { photo in
-                        Button { selectedPhoto = photo } label: {
-                            AsyncImage(url: dsm.thumbURL(path: photo.path, size: "small")) { phase in
-                                switch phase {
-                                case .empty: ProgressView().frame(width: 100, height: 100)
-                                case .success(let img): img.resizable().aspectRatio(1, contentMode: .fill).clipped()
-                                case .failure: Image(systemName: "photo").frame(width: 100, height: 100).foregroundStyle(.secondary)
-                                @unknown default: EmptyView()
+            Group {
+                if let errorMessage {
+                    ContentUnavailableView {
+                        Label("扫描失败", systemImage: "exclamationmark.triangle")
+                    } description: {
+                        Text(errorMessage)
+                    } actions: {
+                        Button("选择目录") { showFolderPicker = true }
+                        Button("重试") { Task { await scanPhotos() } }
+                    }
+                } else if photos.isEmpty && !loading {
+                    ContentUnavailableView {
+                        Label("暂无照片", systemImage: "photo.on.rectangle")
+                    } description: {
+                        Text("当前目录 \(scanFolder) 下未找到图片文件")
+                    } actions: {
+                        Button("选择目录") { showFolderPicker = true }
+                    }
+                } else {
+                    ScrollView {
+                        LazyVGrid(columns: columns, spacing: 2) {
+                            ForEach(photos) { photo in
+                                Button { selectedPhoto = photo } label: {
+                                    AsyncImage(url: dsm.thumbURL(path: photo.path, size: "small")) { phase in
+                                        switch phase {
+                                        case .empty: ProgressView().frame(width: 100, height: 100)
+                                        case .success(let img): img.resizable().aspectRatio(1, contentMode: .fill).clipped()
+                                        case .failure: Image(systemName: "photo").frame(width: 100, height: 100).foregroundStyle(.secondary)
+                                        @unknown default: EmptyView()
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -51,9 +73,18 @@ struct AlbumView: View {
     private func scanPhotos() async {
         loading = true
         defer { loading = false }
+        errorMessage = nil
         do {
             let res = try await dsm.searchStart(folderPath: scanFolder, extension: "jpg,jpeg,png,heic,gif,webp", filetype: "file")
-            guard res.success, let taskid = res.data?.taskid else { return }
+            if !res.success {
+                let code = res.error?.code ?? -1
+                errorMessage = "搜索失败 (code=\(code))，请选择一个共享文件夹作为扫描目录"
+                return
+            }
+            guard let taskid = res.data?.taskid else {
+                errorMessage = "搜索返回无效数据"
+                return
+            }
             var all: [DsmFile] = []
             var offset = 0
             while true {
@@ -65,7 +96,9 @@ struct AlbumView: View {
             }
             try? await dsm.searchStop(taskid: taskid)
             photos = all
-        } catch {}
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }
 

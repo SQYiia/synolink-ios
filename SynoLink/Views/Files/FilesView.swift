@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct FilesView: View {
     @State private var navPath = NavigationPath()
@@ -79,8 +80,12 @@ struct FolderContentsView: View {
     @State private var errorMessage: String?
     @State private var sortBy: FilesView.SortOption = .name
     @State private var sortAsc = true
+    @State private var showUploadPicker = false
+    @State private var shareFile: ShareFileItem?
+    @State private var activityMessage: String?
 
     private let dsm = DsmClient.shared
+    private let imageExtensions: Set<String> = ["jpg", "jpeg", "png", "gif", "heic", "webp"]
 
     var body: some View {
         Group {
@@ -114,6 +119,11 @@ struct FolderContentsView: View {
         }
         .navigationTitle(path.components(separatedBy: "/").last ?? path)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { showUploadPicker = true } label: {
+                    Image(systemName: "square.and.arrow.up")
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     ForEach(FilesView.SortOption.allCases, id: \.self) { opt in
@@ -132,13 +142,43 @@ struct FolderContentsView: View {
         }
         .refreshable { await loadFiles() }
         .task { await loadFiles() }
+        .fileImporter(isPresented: $showUploadPicker, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+            Task { await handleUpload(result) }
+        }
+        .sheet(item: $shareFile) { item in
+            ShareSheet(items: [item.url])
+        }
+        .overlay(alignment: .bottom) {
+            if let activityMessage {
+                Text(activityMessage)
+                    .padding(.horizontal, 16).padding(.vertical, 10)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.bottom, 20)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+    }
+
+    private func isImageFile(_ name: String) -> Bool {
+        imageExtensions.contains((name as NSString).pathExtension.lowercased())
     }
 
     private func fileRow(_ file: DsmFile) -> some View {
-        HStack {
-            Image(systemName: file.isDir ? "folder.fill" : iconForFile(file.name))
-                .foregroundStyle(file.isDir ? .blue : .secondary)
-                .frame(width: 24)
+        HStack(spacing: 10) {
+            if !file.isDir && isImageFile(file.name), let thumbURL = dsm.thumbURL(path: file.path, size: "small") {
+                AsyncImage(url: thumbURL) { phase in
+                    switch phase {
+                    case .success(let img): img.resizable().aspectRatio(contentMode: .fill)
+                    default: Image(systemName: "photo").foregroundStyle(.secondary)
+                    }
+                }
+                .frame(width: 40, height: 40)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            } else {
+                Image(systemName: file.isDir ? "folder.fill" : iconForFile(file.name))
+                    .foregroundStyle(file.isDir ? .blue : .secondary)
+                    .frame(width: 40, height: 40)
+            }
             VStack(alignment: .leading) {
                 Text(file.name).lineLimit(1)
                 if let size = file.additional?.size, !file.isDir {
@@ -151,11 +191,58 @@ struct FolderContentsView: View {
             }
         }
         .contextMenu {
+            if !file.isDir {
+                Button {
+                    Task { await downloadAndShare(file) }
+                } label: {
+                    Label("下载", systemImage: "arrow.down.circle")
+                }
+            }
             Button("重命名") { }
             Button("删除", role: .destructive) {
                 Task { try? await dsm.deletePath(file.path); await loadFiles() }
             }
         }
+    }
+
+    private func downloadAndShare(_ file: DsmFile) async {
+        guard let url = dsm.downloadURL(path: file.path) else { return }
+        withAnimation { activityMessage = "正在下载 \(file.name)..." }
+        do {
+            let data = try await dsm.fetchBytes(url: url)
+            let tempDir = FileManager.default.temporaryDirectory
+            let tempFile = tempDir.appendingPathComponent(file.name)
+            try data.write(to: tempFile)
+            await MainActor.run {
+                activityMessage = nil
+                shareFile = ShareFileItem(url: tempFile)
+            }
+        } catch {
+            await MainActor.run { activityMessage = "下载失败: \(error.localizedDescription)" }
+            try? await Task.sleep(for: .seconds(3))
+            await MainActor.run { activityMessage = nil }
+        }
+    }
+
+    private func handleUpload(_ result: Result<[URL], Error>) async {
+        guard case .success(let urls) = result else { return }
+        for url in urls {
+            let accessing = url.startAccessingSecurityScopedResource()
+            defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+            guard let data = try? Data(contentsOf: url) else { continue }
+            let fileName = url.lastPathComponent
+            await MainActor.run { activityMessage = "正在上传 \(fileName)..." }
+            do {
+                let res = try await dsm.upload(folderPath: path, fileData: data, fileName: fileName)
+                if !res.success {
+                    await MainActor.run { activityMessage = "上传失败: \(fileName)" }
+                }
+            } catch {
+                await MainActor.run { activityMessage = "上传失败: \(error.localizedDescription)" }
+            }
+        }
+        await MainActor.run { activityMessage = nil }
+        await loadFiles()
     }
 
     private func iconForFile(_ name: String) -> String {
@@ -202,4 +289,17 @@ struct FolderContentsView: View {
             }
         }
     }
+}
+
+struct ShareFileItem: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
 }
