@@ -40,26 +40,26 @@ struct VmmStorageListData: Codable { let storages: [VmmStorage]? }
 
 extension DsmClient {
     func vmmHostList() async throws -> DsmResponse<VmmHostListData> {
-        return try await entry(api: "SYNO.Virtualization.API.Host", method: "list", as: DsmResponse<VmmHostListData>.self)
+        return try await entry(api: "SYNO.Virtualization.API.Host", method: "list", as: VmmHostListData.self)
     }
 
     func vmmGuestList() async throws -> DsmResponse<VmmGuestListData> {
-        return try await entry(api: "SYNO.Virtualization.API.Guest", method: "list", params: ["additional": "true"], as: DsmResponse<VmmGuestListData>.self)
+        return try await entry(api: "SYNO.Virtualization.API.Guest", method: "list", params: ["additional": "true"], as: VmmGuestListData.self)
     }
 
     func vmmStorageList() async throws -> DsmResponse<VmmStorageListData> {
-        return try await entry(api: "SYNO.Virtualization.API.Storage", method: "list", as: DsmResponse<VmmStorageListData>.self)
+        return try await entry(api: "SYNO.Virtualization.API.Storage", method: "list", as: VmmStorageListData.self)
     }
 
     func vmmGuestPowerOn(_ guestId: String) async throws -> DsmResponse<EmptyData> {
-        return try await entry(api: "SYNO.Virtualization.API.Guest.Action", method: "poweron", params: ["guest_id": guestId], as: DsmResponse<EmptyData>.self)
+        return try await entry(api: "SYNO.Virtualization.API.Guest.Action", method: "poweron", params: ["guest_id": guestId], as: EmptyData.self)
     }
 
     func vmmGuestShutdown(_ guestId: String) async throws -> DsmResponse<EmptyData> {
-        return try await entry(api: "SYNO.Virtualization.API.Guest.Action", method: "shutdown", params: ["guest_id": guestId], as: DsmResponse<EmptyData>.self)
+        return try await entry(api: "SYNO.Virtualization.API.Guest.Action", method: "shutdown", params: ["guest_id": guestId], as: EmptyData.self)
     }
 
     func vmmGuestPowerOff(_ guestId: String) async throws -> DsmResponse<EmptyData> {
-        return try await entry(api: "SYNO.Virtualization.API.Guest.Action", method: "poweroff", params: ["guest_id": guestId], as: DsmResponse<EmptyData>.self)
+        return try await entry(api: "SYNO.Virtualization.API.Guest.Action", method: "poweroff", params: ["guest_id": guestId], as: EmptyData.self)
     }
 }

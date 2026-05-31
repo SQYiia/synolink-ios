@@ -21,7 +21,7 @@ extension DsmClient {
         ]
         if let did = deviceId { params["device_id"] = did }
 
-        let res: DsmResponse<AuthResult> = try await entry(api: "SYNO.API.Auth", method: "login", post: true, params: params, as: DsmResponse<AuthResult>.self)
+        let res: DsmResponse<AuthResult> = try await entry(api: "SYNO.API.Auth", method: "login", post: true, params: params, as: AuthResult.self)
         if res.success, let data = res.data {
             self.sid = data.sid ?? ""
             self.synoToken = data.synotoken ?? ""
@@ -39,14 +39,14 @@ extension DsmClient {
             "otp_code": otpCode,
         ]
         if let did = deviceId { params["device_id"] = did }
-        let res: DsmResponse<AuthResult> = try await entry(api: "SYNO.API.Auth", method: "login", post: true, params: params, as: DsmResponse<AuthResult>.self)
+        let res: DsmResponse<AuthResult> = try await entry(api: "SYNO.API.Auth", method: "login", post: true, params: params, as: AuthResult.self)
         if res.success, let sid = res.data?.sid { self.dsSid = sid }
     }
 
     func logout() async throws {
-        let _: DsmResponse<EmptyData> = try await entry(api: "SYNO.API.Auth", method: "logout", params: ["session": "FileStation"], as: DsmResponse<EmptyData>.self)
+        let _: DsmResponse<EmptyData> = try await entry(api: "SYNO.API.Auth", method: "logout", params: ["session": "FileStation"], as: EmptyData.self)
         if !dsSid.isEmpty {
-            let _: DsmResponse<EmptyData> = try await entry(api: "SYNO.API.Auth", method: "logout", params: ["session": "DownloadStation"], as: DsmResponse<EmptyData>.self)
+            let _: DsmResponse<EmptyData> = try await entry(api: "SYNO.API.Auth", method: "logout", params: ["session": "DownloadStation"], as: EmptyData.self)
             dsSid = ""
         }
     }

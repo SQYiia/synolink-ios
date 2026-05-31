@@ -39,51 +39,51 @@ struct DSStatistic: Codable { let speed_download: Int64?; let speed_upload: Int6
 
 extension DsmClient {
     func dsInfo() async throws -> DsmResponse<EmptyData> {
-        return try await entry(api: "SYNO.DownloadStation.Info", method: "getinfo", as: DsmResponse<EmptyData>.self)
+        return try await entry(api: "SYNO.DownloadStation.Info", method: "getinfo", as: EmptyData.self)
     }
 
     func dsGetConfig() async throws -> DsmResponse<EmptyData> {
-        return try await entry(api: "SYNO.DownloadStation.Info", method: "getconfig", as: DsmResponse<EmptyData>.self)
+        return try await entry(api: "SYNO.DownloadStation.Info", method: "getconfig", as: EmptyData.self)
     }
 
     func dsTaskList(offset: Int = 0, limit: Int = -1, additional: String = "detail,transfer") async throws -> DsmResponse<DSTaskListData> {
         return try await entry(api: "SYNO.DownloadStation.Task", method: "list", params: [
             "offset": String(offset), "limit": String(limit), "additional": additional
-        ], as: DsmResponse<DSTaskListData>.self)
+        ], as: DSTaskListData.self)
     }
 
     func dsTaskGetInfo(ids: [String], additional: String = "detail,transfer,file") async throws -> DsmResponse<DSTaskListData> {
         return try await entry(api: "SYNO.DownloadStation.Task", method: "getinfo", params: [
             "id": ids.joined(separator: ","), "additional": additional
-        ], as: DsmResponse<DSTaskListData>.self)
+        ], as: DSTaskListData.self)
     }
 
     func dsTaskCreate(uri: String, destination: String? = nil) async throws -> DsmResponse<EmptyData> {
         var params: [String: String] = ["uri": uri]
         if let dest = destination { params["destination"] = normalizeDestination(dest) }
-        return try await entry(api: "SYNO.DownloadStation.Task", method: "create", post: true, params: params, as: DsmResponse<EmptyData>.self)
+        return try await entry(api: "SYNO.DownloadStation.Task", method: "create", post: true, params: params, as: EmptyData.self)
     }
 
     func dsTaskDelete(ids: [String], forceComplete: Bool = false) async throws -> DsmResponse<EmptyData> {
         return try await entry(api: "SYNO.DownloadStation.Task", method: "delete", params: [
             "id": ids.joined(separator: ","), "force_complete": forceComplete ? "true" : "false"
-        ], as: DsmResponse<EmptyData>.self)
+        ], as: EmptyData.self)
     }
 
     func dsTaskPause(ids: [String]) async throws -> DsmResponse<EmptyData> {
         return try await entry(api: "SYNO.DownloadStation.Task", method: "pause", params: [
             "id": ids.joined(separator: ",")
-        ], as: DsmResponse<EmptyData>.self)
+        ], as: EmptyData.self)
     }
 
     func dsTaskResume(ids: [String]) async throws -> DsmResponse<EmptyData> {
         return try await entry(api: "SYNO.DownloadStation.Task", method: "resume", params: [
             "id": ids.joined(separator: ",")
-        ], as: DsmResponse<EmptyData>.self)
+        ], as: EmptyData.self)
     }
 
     func dsStatistic() async throws -> DsmResponse<DSStatistic> {
-        return try await entry(api: "SYNO.DownloadStation.Statistic", method: "getinfo", as: DsmResponse<DSStatistic>.self)
+        return try await entry(api: "SYNO.DownloadStation.Statistic", method: "getinfo", as: DSStatistic.self)
     }
 
     private func normalizeDestination(_ p: String) -> String {

@@ -40,22 +40,22 @@ struct DiskListData: Codable { let disks: [Disk]? }
 
 extension DsmClient {
     func systemInfo() async throws -> DsmResponse<EmptyData> {
-        return try await entry(api: "SYNO.Core.System", method: "info", params: ["type": "storage"], as: DsmResponse<EmptyData>.self)
+        return try await entry(api: "SYNO.Core.System", method: "info", params: ["type": "storage"], as: EmptyData.self)
     }
 
     func systemUtilization() async throws -> DsmResponse<SystemUtilization> {
-        return try await entry(api: "SYNO.Core.System.Utilization", method: "get", params: ["type": "current"], as: DsmResponse<SystemUtilization>.self)
+        return try await entry(api: "SYNO.Core.System.Utilization", method: "get", params: ["type": "current"], as: SystemUtilization.self)
     }
 
     func storageInfo() async throws -> DsmResponse<VolumeListData> {
         return try await entry(api: "SYNO.Core.Storage.Volume", method: "list", params: [
             "limit": "-1", "offset": "0", "location": "internal", "option": "none"
-        ], as: DsmResponse<VolumeListData>.self)
+        ], as: VolumeListData.self)
     }
 
     func diskInfo() async throws -> DsmResponse<DiskListData> {
         return try await entry(api: "SYNO.Core.Storage.Disk", method: "list", params: [
             "limit": "-1", "offset": "0"
-        ], as: DsmResponse<DiskListData>.self)
+        ], as: DiskListData.self)
     }
 }

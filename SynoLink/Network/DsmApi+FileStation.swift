@@ -44,36 +44,36 @@ extension DsmClient {
     func listShare(offset: Int = 0, limit: Int = 0, additional: String = "") async throws -> DsmResponse<ShareListData> {
         return try await entry(api: "SYNO.FileStation.List", method: "list_share", params: [
             "offset": String(offset), "limit": String(limit), "additional": additional
-        ], as: DsmResponse<ShareListData>.self)
+        ], as: ShareListData.self)
     }
 
     func listFiles(folderPath: String, offset: Int = 0, limit: Int = 0, additional: String = "", filetype: String = "all") async throws -> DsmResponse<FileListData> {
         return try await entry(api: "SYNO.FileStation.List", method: "list", params: [
             "folder_path": folderPath, "offset": String(offset), "limit": String(limit),
             "additional": additional, "filetype": filetype
-        ], as: DsmResponse<FileListData>.self)
+        ], as: FileListData.self)
     }
 
     func listFolders(folderPath: String) async throws -> DsmResponse<FileListData> {
-        return try await listFiles(folderPath: folderPath, filetype: "dir", limit: 0)
+        return try await listFiles(folderPath: folderPath, limit: 0, filetype: "dir")
     }
 
     func createFolder(folderPath: String, name: String, forceParent: Bool = false) async throws -> DsmResponse<EmptyData> {
         return try await entry(api: "SYNO.FileStation.CreateFolder", method: "create", post: true, params: [
             "folder_path": folderPath, "name": name, "force_parent": forceParent ? "true" : "false"
-        ], as: DsmResponse<EmptyData>.self)
+        ], as: EmptyData.self)
     }
 
     func rename(path: String, name: String) async throws -> DsmResponse<EmptyData> {
         return try await entry(api: "SYNO.FileStation.Rename", method: "rename", post: true, params: [
             "path": path, "name": name
-        ], as: DsmResponse<EmptyData>.self)
+        ], as: EmptyData.self)
     }
 
     func deletePath(_ path: String, recursive: Bool = true) async throws -> DsmResponse<EmptyData> {
         return try await entry(api: "SYNO.FileStation.Delete", method: "delete", post: true, params: [
             "path": path, "recursive": recursive ? "true" : "false"
-        ], as: DsmResponse<EmptyData>.self)
+        ], as: EmptyData.self)
     }
 
     func deletePaths(_ paths: [String], recursive: Bool = true) async throws -> DsmResponse<EmptyData> {
@@ -86,13 +86,13 @@ extension DsmClient {
         return try await entry(api: "SYNO.FileStation.CopyMove", method: "start", post: true, params: [
             "path": paths.joined(separator: ","), "dest_folder_path": destFolder,
             "overwrite": overwrite ? "true" : "false", "remove_src": removeSource ? "true" : "false"
-        ], as: DsmResponse<TaskIdResult>.self)
+        ], as: TaskIdResult.self)
     }
 
     struct CopyMoveStatus: Codable { let finished: Bool; let progress: Int? }
 
     func copyMoveStatus(taskid: String) async throws -> DsmResponse<CopyMoveStatus> {
-        return try await entry(api: "SYNO.FileStation.CopyMove", method: "status", params: ["taskid": taskid], as: DsmResponse<CopyMoveStatus>.self)
+        return try await entry(api: "SYNO.FileStation.CopyMove", method: "status", params: ["taskid": taskid], as: CopyMoveStatus.self)
     }
 
     func searchStart(folderPath: String, pattern: String = "", recursive: Bool = true, extension ext: String? = nil, filetype: String? = nil) async throws -> DsmResponse<TaskIdResult> {
@@ -100,8 +100,8 @@ extension DsmClient {
             "folder_path": folderPath, "pattern": pattern, "recursive": recursive ? "true" : "false"
         ]
         if let ext { params["extension"] = ext }
-        if let ft { params["filetype"] = ft }
-        return try await entry(api: "SYNO.FileStation.Search", method: "start", post: true, params: params, as: DsmResponse<TaskIdResult>.self)
+        if let filetype { params["filetype"] = filetype }
+        return try await entry(api: "SYNO.FileStation.Search", method: "start", post: true, params: params, as: TaskIdResult.self)
     }
 
     struct SearchListData: Codable { let files: [DsmFile]?; let total: Int? }
@@ -112,11 +112,11 @@ extension DsmClient {
         ]
         if let sortBy { params["sort_by"] = sortBy }
         if let sortDirection { params["sort_direction"] = sortDirection }
-        return try await entry(api: "SYNO.FileStation.Search", method: "list", params: params, as: DsmResponse<SearchListData>.self)
+        return try await entry(api: "SYNO.FileStation.Search", method: "list", params: params, as: SearchListData.self)
     }
 
     func searchStop(taskid: String) async throws -> DsmResponse<EmptyData> {
-        return try await entry(api: "SYNO.FileStation.Search", method: "stop", post: true, params: ["taskid": taskid], as: DsmResponse<EmptyData>.self)
+        return try await entry(api: "SYNO.FileStation.Search", method: "stop", post: true, params: ["taskid": taskid], as: EmptyData.self)
     }
 
     func upload(folderPath: String, fileData: Data, fileName: String, overwrite: Bool = true) async throws -> DsmResponse<EmptyData> {

@@ -3,10 +3,10 @@ import Foundation
 struct DsmResponse<T: Decodable>: Decodable {
     let success: Bool
     let data: T?
-    let error: DsmError?
+    let error: DsmApiError?
 }
 
-struct DsmError: Decodable {
+struct DsmApiError: Decodable {
     let code: Int?
     let errors: AnyCodable?
 }

@@ -3,11 +3,11 @@ import Foundation
 actor DsmClient {
     static let shared = DsmClient()
 
-    private(set) var baseURL: String = ""
-    private(set) var apiInfo: [String: ApiInfo] = [:]
-    private(set) var synoToken: String = ""
-    private(set) var sid: String = ""
-    private(set) var dsSid: String = ""
+    var baseURL: String = ""
+    var apiInfo: [String: ApiInfo] = [:]
+    var synoToken: String = ""
+    var sid: String = ""
+    var dsSid: String = ""
 
     let session: URLSession
     private var sessionRecoverer: (() async -> Bool)?
@@ -39,7 +39,7 @@ actor DsmClient {
         return components?.url
     }
 
-    private func request<T: Decodable>(
+    func request<T: Decodable>(
         path: String,
         method: String = "GET",
         query: [String: String] = [:],
@@ -47,7 +47,7 @@ actor DsmClient {
         headers: [String: String] = [:],
         as: T.Type = T.self,
         retried: Bool = false
-    ) async throws -> T {
+    ) async throws -> DsmResponse<T> {
         let apiName = form?["api"] ?? query["api"] ?? ""
         let useDsSid = apiName.hasPrefix("SYNO.DownloadStation.") && !dsSid.isEmpty
         let effectiveSid = useDsSid ? dsSid : sid
@@ -118,9 +118,9 @@ actor DsmClient {
         let cgiPath = apiInfo[api]?.path ?? "entry.cgi"
         let path = "/webapi/\(cgiPath)"
         if post {
-            return try await request(path: path, method: "POST", form: full, as: DsmResponse<T>.self)
+            return try await request(path: path, method: "POST", form: full, as: T.self)
         }
-        return try await request(path: path, query: full, as: DsmResponse<T>.self)
+        return try await request(path: path, query: full, as: T.self)
     }
 
     // MARK: - Helpers

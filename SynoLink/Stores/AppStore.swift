@@ -78,21 +78,7 @@ class AppStore {
     }
 
     func accountsForServer(_ serverId: UUID) -> [AccountConfig] {
-
-    func logout() {
-        currentServerId = nil
-        currentAccountId = nil
-        UserDefaults.standard.removeObject(forKey: currentServerKey)
-        UserDefaults.standard.removeObject(forKey: currentAccountKey)
-    }
         accounts.filter { $0.serverId == serverId }.sorted { ($0.lastLoginTime ?? .distantPast) > ($1.lastLoginTime ?? .distantPast) }
-
-    func logout() {
-        currentServerId = nil
-        currentAccountId = nil
-        UserDefaults.standard.removeObject(forKey: currentServerKey)
-        UserDefaults.standard.removeObject(forKey: currentAccountKey)
-    }
     }
 
     func logout() {
